@@ -1,0 +1,47 @@
+name: Sync fork with upstream
+
+on:
+  schedule:
+    - cron: '0 0 2-31/2 * *'
+  workflow_dispatch: # Manuálisan is indítható
+
+jobs:
+  sync-fork:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the fork
+        uses: actions/checkout@v3
+
+      - name: Set current branch name as a variable
+        run: echo "CURRENT_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@users.noreply.github.com"
+
+      - name: Add upstream repository
+        run: |
+          git remote add upstream https://github.com/herrbischoff/country-ip-blocks.git
+          git fetch upstream
+
+      - name: Backup sync-fork.yml
+        run: |
+          cp .github/workflows/sync-fork.yml /tmp/sync-fork.yml
+
+      - name: Reset fork to upstream
+        run: |
+          git checkout ${{ env.CURRENT_BRANCH }}
+          git reset --hard upstream/master
+
+      - name: Restore sync-fork.yml
+        run: |
+          mkdir -p .github/workflows
+          cp /tmp/sync-fork.yml .github/workflows/sync-fork.yml
+
+      - name: Commit sync-fork.yml and push all changes to the repository
+        run: |
+          git add .github/workflows/sync-fork.yml
+          git commit -m "Restore sync-fork.yml file"
+          git push --force origin ${{ env.CURRENT_BRANCH }}
